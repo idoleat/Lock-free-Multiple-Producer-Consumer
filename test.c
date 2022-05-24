@@ -19,25 +19,25 @@ typedef struct Data {
 #define QUEUE_MC 0
 #define QUEUE_TYPE Data
 #define QUEUE_IMPLEMENTATION
-#include "./src/queues.h"
+#include "./build/queues.h"
 
 #define QUEUE_MP 1
 #define QUEUE_MC 0
 #define QUEUE_TYPE Data
 #define QUEUE_IMPLEMENTATION
-#include "./src/queues.h"
+#include "./build/queues.h"
 
 #define QUEUE_MP 0
 #define QUEUE_MC 1
 #define QUEUE_TYPE Data
 #define QUEUE_IMPLEMENTATION
-#include "./src/queues.h"
+#include "./build/queues.h"
 
 #define QUEUE_MP 1
 #define QUEUE_MC 1
 #define QUEUE_TYPE Data
 #define QUEUE_IMPLEMENTATION
-#include "./src/queues.h"
+#include "./build/queues.h"
 
 #define CAST(x, y) ((x) y)
 

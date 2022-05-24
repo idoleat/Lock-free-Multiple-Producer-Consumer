@@ -6,3 +6,4 @@
 !*/
 ### Above combination will ignore all files without extension ###
 !Makefile
+/.ccls-cache
