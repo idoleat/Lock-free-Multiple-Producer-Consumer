@@ -16,6 +16,6 @@ general:
 	./tests
 
 empty:
-	cp -v ./empty/queues.h ./src/queues.h
+	cp -v ./template/queues.h ./src/queues.h
 	$(CC) $(CFLAGS) -o tests test.c
 	./tests
