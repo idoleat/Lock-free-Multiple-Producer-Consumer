@@ -6,4 +6,9 @@
 !*/
 ### Above combination will ignore all files without extension ###
 !Makefile
-/.ccls-cache
+!LICENSE
+.ccls-cache
+.ccls-cache/*
+build
+build/*
+compile_commands.json
