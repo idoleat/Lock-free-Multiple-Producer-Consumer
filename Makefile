@@ -19,6 +19,11 @@ general: mkdir_build
 	$(CC) $(CFLAGS) -o tests test.c
 	./tests
 
+lock: mkdir_build
+	cp -v ./lock/queues.h ./build/queues.h
+	$(CC) $(CFLAGS) -o tests test.c
+	./tests
+
 template: mkdir_build
 	cp -v ./template/queues.h ./build/queues.h
 	$(CC) $(CFLAGS) -o tests test.c

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <threads.h> /* C11 */
+#include <pthread.h>
 
 // -----------------------------------------------------------------------------
 
