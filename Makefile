@@ -1,4 +1,4 @@
-CFLAGS = -Wall -O2 -std=c11 -lpthread
+CFLAGS = -Wall -O2 -std=c11 -lpthread -g
 
 mkdir_build:
 	mkdir -p ./build
