@@ -141,12 +141,28 @@ QueueResult_t dequeue(Tag tag, void *q, Data *d)
     return QueueResult_Error;
 }
 
+QueueResult_t free_queue(Tag tag, void *q)
+{
+    switch (tag) {
+    case Spsc:
+        return spsc_free_queue_Data(CAST(Queue_Spsc_Data *, q));
+    case Mpsc:
+        return mpsc_free_queue_Data(CAST(Queue_Mpsc_Data *, q));
+    case Spmc:
+        return spmc_free_queue_Data(CAST(Queue_Spmc_Data *, q));
+    case Mpmc:
+        return mpmc_free_queue_Data(CAST(Queue_Mpmc_Data *, q));
+    }
+
+    return QueueResult_Error;
+}
+
 // -----------------------------------------------------------------------------
 
 #define EXPECT(x)      \
     do {               \
         if (!(x)) {    \
-            free(q);   \
+            free_queue(tag, q);   \
             return #x; \
         }              \
     } while (0)
@@ -195,11 +211,11 @@ const char *create(Tag tag, unsigned count_in, unsigned count_out)
         EXPECT(bytes > 0);
         EXPECT(bytes < 100000);
 
-        void *queue = malloc(bytes);
+        void *queue = malloc(bytes); // not used
 
-        QueueResult_t create = make(tag, 1 << 8, q, &bytes);
+        QueueResult_t create = make(tag, 1 << 8, q, &bytes); // use queue not q? Need check
 
-        free(queue);
+        free_queue(tag, queue);
 
         EXPECT(create == QueueResult_Ok);
     }
@@ -239,7 +255,7 @@ const char *empty(Tag tag, unsigned count_in, unsigned count_out)
         EXPECT(result_dequeue == QueueResult_Empty);
     }
 
-    free(q);
+    free_queue(tag, q);
 
     return NULL;
 }
@@ -282,7 +298,7 @@ const char *full(Tag tag, unsigned count_in, unsigned count_out)
         EXPECT(result_dequeue == QueueResult_Full);
     }
 
-    free(q);
+    free_queue(tag, q);
 
     return NULL;
 }

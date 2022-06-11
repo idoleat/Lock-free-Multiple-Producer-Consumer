@@ -114,6 +114,7 @@ QueueResult_t QUEUE_FN(try_enqueue)(QUEUE_STRUCT *queue,
 QueueResult_t QUEUE_FN(try_dequeue)(QUEUE_STRUCT *queue, QUEUE_TYPE *data);
 QueueResult_t QUEUE_FN(enqueue)(QUEUE_STRUCT *queue, QUEUE_TYPE const *data);
 QueueResult_t QUEUE_FN(dequeue)(QUEUE_STRUCT *queue, QUEUE_TYPE *data);
+QueueResult_t QUEUE_FN(free_queue)(QUEUE_STRUCT *queue);
 
 // -----------------------------------------------------------------------------
 
@@ -143,6 +144,16 @@ typedef struct QUEUE_STRUCT {
 
     QUEUE_CELL cells[];
 } QUEUE_STRUCT;
+
+QueueResult_t QUEUE_FN(free_queue)(QUEUE_STRUCT *queue)
+{
+    if  (queue->CG_Lock)  {
+        pthread_mutex_destroy(queue->CG_Lock);
+        free(queue->CG_Lock);
+    }
+    free(queue);
+    return QueueResult_Ok;
+}
 
 QueueResult_t QUEUE_FN(make_queue)(size_t cell_count,
                                    QUEUE_STRUCT *queue,
@@ -189,8 +200,8 @@ QueueResult_t QUEUE_FN(make_queue)(size_t cell_count,
 
     queue->cell_mask = cell_count - 1;
 
-    queue->CG_Lock = malloc(sizeof(pthread_mutex_t));  // only for testing
-    pthread_mutex_init(queue->CG_Lock, NULL);          // only for testing
+    queue->CG_Lock = malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(queue->CG_Lock, NULL);
 
     pthread_mutex_lock(queue->CG_Lock);
     for (size_t i = 0; i < cell_count; i++) {
@@ -209,9 +220,6 @@ QueueResult_t QUEUE_FN(make_queue)(size_t cell_count,
     //#endif
     // will there be a situation that multi-threads are making queue?
     // If not, why lock and atomic store?
-
-    pthread_mutex_destroy(queue->CG_Lock);  // only for testing
-    free(queue->CG_Lock);                   // only for testing
 
     return QueueResult_Ok;
 }

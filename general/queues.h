@@ -114,6 +114,7 @@ QueueResult_t QUEUE_FN(try_enqueue)(QUEUE_STRUCT *queue,
 QueueResult_t QUEUE_FN(try_dequeue)(QUEUE_STRUCT *queue, QUEUE_TYPE *data);
 QueueResult_t QUEUE_FN(enqueue)(QUEUE_STRUCT *queue, QUEUE_TYPE const *data);
 QueueResult_t QUEUE_FN(dequeue)(QUEUE_STRUCT *queue, QUEUE_TYPE *data);
+QueueResult_t QUEUE_FN(free_queue)(QUEUE_STRUCT *queue);
 
 // -----------------------------------------------------------------------------
 
@@ -140,6 +141,12 @@ typedef struct QUEUE_STRUCT {
 
     QUEUE_CELL cells[];
 } QUEUE_STRUCT;
+
+QueueResult_t QUEUE_FN(free_queue)(QUEUE_STRUCT *queue)
+{
+    free(queue);
+    return QueueResult_Ok;
+}
 
 QueueResult_t QUEUE_FN(make_queue)(size_t cell_count,
                                    QUEUE_STRUCT *queue,
