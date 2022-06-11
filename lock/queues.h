@@ -139,17 +139,24 @@ typedef struct QUEUE_STRUCT {
     size_t cell_mask;
     uint8_t pad4[QUEUE_CACHELINE_BYTES - sizeof(size_t)];
 
-    pthread_mutex_t *CG_Lock;
+    pthread_mutex_t *p_lock;
     uint8_t pad5[QUEUE_CACHELINE_BYTES - sizeof(pthread_mutex_t)];
+
+    pthread_mutex_t *c_lock;
+    uint8_t pad6[QUEUE_CACHELINE_BYTES - sizeof(pthread_mutex_t)];
 
     QUEUE_CELL cells[];
 } QUEUE_STRUCT;
 
 QueueResult_t QUEUE_FN(free_queue)(QUEUE_STRUCT *queue)
 {
-    if  (queue->CG_Lock)  {
-        pthread_mutex_destroy(queue->CG_Lock);
-        free(queue->CG_Lock);
+    if  (queue->p_lock)  {
+        pthread_mutex_destroy(queue->p_lock);
+        free(queue->p_lock);
+    }
+    if  (queue->c_lock)  {
+        pthread_mutex_destroy(queue->c_lock);
+        free(queue->c_lock);
     }
     free(queue);
     return QueueResult_Ok;
@@ -200,62 +207,51 @@ QueueResult_t QUEUE_FN(make_queue)(size_t cell_count,
 
     queue->cell_mask = cell_count - 1;
 
-    queue->CG_Lock = malloc(sizeof(pthread_mutex_t));
-    pthread_mutex_init(queue->CG_Lock, NULL);
+    queue->p_lock = malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(queue->p_lock, NULL);
+    queue->c_lock = malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(queue->c_lock, NULL);
 
-    pthread_mutex_lock(queue->CG_Lock);
-    for (size_t i = 0; i < cell_count; i++) {
-        queue->cells[i].sequence = i;
-    }
-    pthread_mutex_unlock(queue->CG_Lock);
-
-    // setup index
-    // Test setup need fix as well
-    //#if (QUEUE_MP)
     queue->enqueue_index = 0;
-    //#endif
-
-    //#if (QUEUE_MC)
     queue->dequeue_index = 0;
-    //#endif
-    // will there be a situation that multi-threads are making queue?
-    // If not, why lock and atomic store?
 
     return QueueResult_Ok;
 }
 
 QueueResult_t QUEUE_FN(try_enqueue)(QUEUE_STRUCT *queue, QUEUE_TYPE const *data)
 {
-    /*
-     * Put your code here
-     */
-
-    intptr_t difference = 0;
-
-    if (difference < 0) {
+#if (QUEUE_MP)
+    pthread_mutex_lock(queue->p_lock);
+    queue->enqueue_index += 1;
+    pthread_mutex_unlock(queue->p_lock);
+#else
+    queue->enqueue_index += 1;
+#endif
+    if(queue->enqueue_index - queue->dequeue_index > queue->cell_mask + 1){
+        queue->enqueue_index -= 1;
         return QueueResult_Full;
     }
+    queue->cells[queue->enqueue_index & queue->cell_mask].data = *data;
 
-    return QueueResult_Contention;
+    return QueueResult_Ok;
 }
 
 QueueResult_t QUEUE_FN(try_dequeue)(QUEUE_STRUCT *queue, QUEUE_TYPE *data)
 {
-    /*
-     * Put your code here
-     */
-
-    intptr_t difference = 0;
-
-    if (!difference) {
-        return QueueResult_Ok;
-    }
-
-    if (difference < 0) {
+#if (QUEUE_MC)
+    pthread_mutex_lock(queue->c_lock);
+    queue->dequeue_index += 1;
+    pthread_mutex_unlock(queue->c_lock);
+#else
+    queue->dequeue_index += 1;
+#endif
+    if(queue->dequeue_index > queue->enqueue_index){
+        queue->dequeue_index -= 1;
         return QueueResult_Empty;
     }
+    *data = queue->cells[queue->dequeue_index & queue->cell_mask].data;
 
-    return QueueResult_Contention;
+    return QueueResult_Ok;
 }
 
 QueueResult_t QUEUE_FN(enqueue)(QUEUE_STRUCT *queue, QUEUE_TYPE const *data)
