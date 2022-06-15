@@ -222,26 +222,16 @@ QueueResult_t QUEUE_FN(try_enqueue)(QUEUE_STRUCT *queue, QUEUE_TYPE const *data)
 {
     size_t enq_idx;
 
-#if (QUEUE_MP)
     pthread_mutex_lock(queue->p_lock);
-    enq_idx = queue->enqueue_index;
-    pthread_mutex_unlock(queue->p_lock);
-#else
-    enq_idx = queue->enqueue_index;
-#endif
+    queue->enqueue_index += 1;
 
-    if(enq_idx + 1 - queue->dequeue_index > queue->cell_mask + 1)
+    if(queue->enqueue_index - queue->dequeue_index > queue->cell_mask + 1){
+        queue->enqueue_index -= 1;
         return QueueResult_Full;
+    }
 
-#if (QUEUE_MP)
-    pthread_mutex_lock(queue->p_lock);
-    queue->enqueue_index += 1;
+    queue->cells[queue->enqueue_index & queue->cell_mask].data = *data;
     pthread_mutex_unlock(queue->p_lock);
-#else
-    queue->enqueue_index += 1;
-#endif
-
-    queue->cells[enq_idx & queue->cell_mask].data = *data;
 
     return QueueResult_Ok;
 }
@@ -250,26 +240,16 @@ QueueResult_t QUEUE_FN(try_dequeue)(QUEUE_STRUCT *queue, QUEUE_TYPE *data)
 {
     size_t deq_idx;
 
-#if (QUEUE_MC)
-    pthread_mutex_lock(queue->c_lock);
-    deq_idx = queue->dequeue_index;
-    pthread_mutex_unlock(queue->c_lock);
-#else
-    deq_idx = queue->dequeue_index;
-#endif
+    pthread_mutex_lock(queue->p_lock);
+    queue->dequeue_index += 1;
 
-    if(deq_idx + 1 > queue->enqueue_index)
+    if(queue->dequeue_index > queue->enqueue_index){
+        queue->dequeue_index -= 1;
         return QueueResult_Empty;
+    }
 
-#if (QUEUE_MC)
-    pthread_mutex_lock(queue->c_lock);
-    queue->dequeue_index += 1;
-    pthread_mutex_unlock(queue->c_lock);
-#else
-    queue->dequeue_index += 1;
-#endif
-
-    *data = queue->cells[deq_idx & queue->cell_mask].data;
+    *data = queue->cells[queue->dequeue_index & queue->cell_mask].data;
+    pthread_mutex_unlock(queue->p_lock);
 
     return QueueResult_Ok;
 }
