@@ -5,10 +5,13 @@
 #include <stdlib.h>
 #include <threads.h> /* C11 */
 #include <pthread.h>
+#include <unistd.h>
+#include <signal.h>
 
 // -----------------------------------------------------------------------------
 
 #define QUEUE_TEST_THREADS_MAX 16
+#define EN_DE_RATE 2
 
 typedef struct Data {
     float a;
@@ -211,11 +214,7 @@ const char *create(Tag tag, unsigned count_in, unsigned count_out)
         EXPECT(bytes > 0);
         EXPECT(bytes < 100000);
 
-        void *queue = malloc(bytes); // not used
-
         QueueResult_t create = make(tag, 1 << 8, q, &bytes); // use queue not q? Need check
-
-        free_queue(tag, queue);
 
         EXPECT(create == QueueResult_Ok);
     }
@@ -416,6 +415,49 @@ const char *sums10000(Tag tag, unsigned count_in, unsigned count_out)
     return NULL;
 }
 
+int enqer(void *data){
+    return 1;
+}
+
+int deqer(void *data){
+    return 1;
+}
+
+const char *endeq(Tag tag, unsigned count_in, unsigned count_out){
+    // This way of creating a queue is tedious. Could be better
+    void *q = NULL;
+    {
+        size_t bytes = 0;
+
+        make(tag, 1 << 8, NULL, &bytes);
+
+        EXPECT(bytes > 0);
+
+        q = malloc(bytes);
+
+        QueueResult_t create = make(tag, 1 << 8, q, &bytes);
+
+        EXPECT(create == QueueResult_Ok);
+    }
+
+    thrd_t enq[QUEUE_TEST_THREADS_MAX];
+    thrd_t deq[QUEUE_TEST_THREADS_MAX];
+
+    atomic_size_t done_in_count = ATOMIC_VAR_INIT(count_in);
+    atomic_size_t done_out_count = ATOMIC_VAR_INIT(count_out);
+    atomic_size_t global_count = ATOMIC_VAR_INIT(0);
+
+
+    return NULL;
+}
+
+void ALRM_handler(int signum){
+    printf("********\n");
+    printf("TIMEOUT!\n");
+    printf("********\n");
+    raise(SIGTERM);
+}
+
 typedef const char *(*Test)(Tag, unsigned, unsigned);
 #define TEST(x) \
     {           \
@@ -435,6 +477,8 @@ int main(int arg_count, char **args)
     (void) arg_count;
     (void) args;
 
+    signal(SIGALRM, ALRM_handler);
+
     struct {
         unsigned count_in;
         unsigned count_out;
@@ -446,6 +490,7 @@ int main(int arg_count, char **args)
 
     for (unsigned tag = 0; tag < (Max + 1); tag++) {
         for (unsigned j = 0; j < TEST_COUNT; j++) {
+            alarm(3);
             const char *error = tests[j].test(tag, thread_counts[tag].count_in,
                                               thread_counts[tag].count_out);
 
