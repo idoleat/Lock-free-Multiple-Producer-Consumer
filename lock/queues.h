@@ -212,8 +212,8 @@ QueueResult_t QUEUE_FN(make_queue)(size_t cell_count,
     queue->c_lock = malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(queue->c_lock, NULL);
 
-    QUEUE_P_SETUP(queue->enqueue_index, 0, QUEUE_ORDER_RELAXED);
-    QUEUE_C_SETUP(queue->dequeue_index, 0, QUEUE_ORDER_RELAXED);
+    queue->enqueue_index = 0;
+    queue->dequeue_index = 0;
 
     return QueueResult_Ok;
 }
@@ -247,7 +247,7 @@ QueueResult_t QUEUE_FN(try_enqueue)(QUEUE_STRUCT *queue, QUEUE_TYPE const *data)
     queue->enqueue_index += 1;
 #endif
 
-    queue->cells[enq_idx & queue->cell_mask].data = *data;
+    queue->cells[(enq_idx  +  1) & queue->cell_mask].data = *data;
 
     return QueueResult_Ok;
 }
@@ -281,7 +281,7 @@ QueueResult_t QUEUE_FN(try_dequeue)(QUEUE_STRUCT *queue, QUEUE_TYPE *data)
     queue->dequeue_index += 1;
 #endif
 
-    *data = queue->cells[deq_idx & queue->cell_mask].data;
+    *data = queue->cells[(deq_idx  +  1) & queue->cell_mask].data;
 
     return QueueResult_Ok;
 }
