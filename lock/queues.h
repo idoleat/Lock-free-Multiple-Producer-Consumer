@@ -150,11 +150,11 @@ typedef struct QUEUE_STRUCT {
 
 QueueResult_t QUEUE_FN(free_queue)(QUEUE_STRUCT *queue)
 {
-    if  (queue->p_lock)  {
+    if (queue->p_lock) {
         pthread_mutex_destroy(queue->p_lock);
         free(queue->p_lock);
     }
-    if  (queue->c_lock)  {
+    if (queue->c_lock) {
         pthread_mutex_destroy(queue->c_lock);
         free(queue->c_lock);
     }
@@ -212,8 +212,8 @@ QueueResult_t QUEUE_FN(make_queue)(size_t cell_count,
     queue->c_lock = malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(queue->c_lock, NULL);
 
-    queue->enqueue_index = 0;
-    queue->dequeue_index = 0;
+    QUEUE_P_SETUP(queue->enqueue_index, 0, QUEUE_ORDER_RELAXED);
+    QUEUE_C_SETUP(queue->dequeue_index, 0, QUEUE_ORDER_RELAXED);
 
     return QueueResult_Ok;
 }
@@ -223,20 +223,26 @@ QueueResult_t QUEUE_FN(try_enqueue)(QUEUE_STRUCT *queue, QUEUE_TYPE const *data)
     size_t enq_idx;
 
 #if (QUEUE_MP)
-    pthread_mutex_lock(queue->p_lock);
-    enq_idx = queue->enqueue_index;
-    pthread_mutex_unlock(queue->p_lock);
+    if (pthread_mutex_trylock(queue->p_lock) == 0) {
+        enq_idx = queue->enqueue_index;
+        pthread_mutex_unlock(queue->p_lock);
+    } else {
+        return QueueResult_Contention;
+    }
 #else
     enq_idx = queue->enqueue_index;
 #endif
 
-    if(enq_idx + 1 - queue->dequeue_index > queue->cell_mask + 1)
+    if (enq_idx + 1 - queue->dequeue_index > queue->cell_mask + 1)
         return QueueResult_Full;
 
 #if (QUEUE_MP)
-    pthread_mutex_lock(queue->p_lock);
-    queue->enqueue_index += 1;
-    pthread_mutex_unlock(queue->p_lock);
+    if (pthread_mutex_trylock(queue->p_lock) == 0) {
+        queue->enqueue_index += 1;
+        pthread_mutex_unlock(queue->p_lock);
+    } else {
+        return QueueResult_Contention;
+    }
 #else
     queue->enqueue_index += 1;
 #endif
@@ -251,20 +257,26 @@ QueueResult_t QUEUE_FN(try_dequeue)(QUEUE_STRUCT *queue, QUEUE_TYPE *data)
     size_t deq_idx;
 
 #if (QUEUE_MC)
-    pthread_mutex_lock(queue->c_lock);
-    deq_idx = queue->dequeue_index;
-    pthread_mutex_unlock(queue->c_lock);
+    if (pthread_mutex_trylock(queue->c_lock) == 0) {
+        deq_idx = queue->dequeue_index;
+        pthread_mutex_unlock(queue->c_lock);
+    } else {
+        return QueueResult_Contention;
+    }
 #else
     deq_idx = queue->dequeue_index;
 #endif
 
-    if(deq_idx + 1 > queue->enqueue_index)
+    if (deq_idx + 1 > queue->enqueue_index)
         return QueueResult_Empty;
 
 #if (QUEUE_MC)
-    pthread_mutex_lock(queue->c_lock);
-    queue->dequeue_index += 1;
-    pthread_mutex_unlock(queue->c_lock);
+    if (pthread_mutex_trylock(queue->c_lock) == 0) {
+        queue->dequeue_index += 1;
+        pthread_mutex_unlock(queue->c_lock);
+    } else {
+        return QueueResult_Contention;
+    }
 #else
     queue->dequeue_index += 1;
 #endif
