@@ -282,21 +282,21 @@ const char *full(Tag tag, unsigned count_in, unsigned count_out)
         EXPECT(enqueue(tag, q, &data) == QueueResult_Ok);
     }
 
-    /*{
+    {
         Data data = {0};
 
         QueueResult_t result_try_dequeue = try_enqueue(tag, q, &data);
 
         EXPECT(result_try_dequeue == QueueResult_Full);
-    }*/
+    }
 
-    /*{
+    {
         Data data = {0};
 
         QueueResult_t result_dequeue = enqueue(tag, q, &data);
 
         EXPECT(result_dequeue == QueueResult_Full);
-    }*/
+    }
 
     free_queue(tag, q);
 
@@ -495,9 +495,10 @@ int main(int arg_count, char **args)
 
     for (unsigned tag = 0; tag < (Max + 1); tag++) {
         for (unsigned j = 0; j < TEST_COUNT; j++) {
-            alarm(10);
+            alarm(3);
             const char *error = tests[j].test(tag, thread_counts[tag].count_in,
                                               thread_counts[tag].count_out);
+            alarm(0);
 
             printf("Test: %s: %-20s: %s%s\n", tag_to_name[tag], tests[j].name,
                    (error ? "FAIL: " : "PASS"), (error ? error : ""));
