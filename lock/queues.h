@@ -1,8 +1,19 @@
+#include <pthread.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
-#if !defined(QUEUE_TYPE) || !defined(QUEUE_MP) || !defined(QUEUE_MC)
+#if !defined(QUEUE_TYPE) 
+#define QUEUE_TYPE Data
+typedef struct Data {
+    float a;
+    uint32_t b;
+    uint8_t bytes[16];
+} Data;
+#endif
+
+#if !defined(QUEUE_MP) || !defined(QUEUE_MC)
 #error Please define QUEUE_TYPE, QUEUE_MP and QUEUE_MC
 #endif
 
@@ -118,6 +129,7 @@ QueueResult_t QUEUE_FN(free_queue)(QUEUE_STRUCT *queue);
 
 // -----------------------------------------------------------------------------
 
+#define QUEUE_IMPLEMENTATION
 #if defined(QUEUE_IMPLEMENTATION)
 
 #undef QUEUE_IMPLEMENTATION
@@ -235,7 +247,7 @@ QueueResult_t QUEUE_FN(try_enqueue)(QUEUE_STRUCT *queue, QUEUE_TYPE const *data)
     enq_idx = queue->enqueue_index;
 #endif
 
-    if (enq_idx - QUEUE_P_LOAD(queue->dequeue_index, QUEUE_ORDER_RELAXED) >
+    if (enq_idx - queue->dequeue_index >
         queue->cell_mask + 1) {
 #if (QUEUE_MP)
         pthread_mutex_lock(queue->p_lock);
@@ -270,7 +282,7 @@ QueueResult_t QUEUE_FN(try_dequeue)(QUEUE_STRUCT *queue, QUEUE_TYPE *data)
     deq_idx = queue->dequeue_index;
 #endif
 
-    if (deq_idx > QUEUE_C_LOAD(queue->enqueue_index, QUEUE_ORDER_RELAXED)) {
+    if (deq_idx > queue->enqueue_index) {
 #if (QUEUE_MC)
         pthread_mutex_lock(queue->c_lock);
         queue->dequeue_index -= 1;
